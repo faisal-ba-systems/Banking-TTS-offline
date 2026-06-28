@@ -37,6 +37,12 @@ class TTSSynthesizeRequest(BaseModel):
     )
 
 
+class VoicePreviewRequest(BaseModel):
+    """Request body for POST /tts/preview-voice."""
+    voice_id: str = Field(description="XTTS v2 built-in speaker name to audition")
+    language: str = Field(default="en", description="ISO 639-1 language code for the sample sentence")
+
+
 class TTSSynthesizeTextResponse(BaseModel):
     """Returned by the /tts/preview endpoint (text only, no audio)."""
     text: str

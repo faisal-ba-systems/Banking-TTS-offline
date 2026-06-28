@@ -1,10 +1,13 @@
 import logging
+from pathlib import Path
+
 from app.modules.voice.schemas import VoiceInfo
 
 logger = logging.getLogger(__name__)
 
+_CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "voices.yaml"
+
 # ── Single-speaker registry (one model per language) ──────────────────────────
-# voice_id here is a label only — these models have no speaker selection.
 _SINGLE_SPEAKER_REGISTRY: dict[str, list[VoiceInfo]] = {
     "en": [VoiceInfo(voice_id="en_ljspeech", name="LJSpeech", language_code="en", gender="female", is_default=True, description="LJSpeech – clean, neutral American English")],
     "es": [VoiceInfo(voice_id="es_mai", name="MAI Spanish", language_code="es", gender="female", is_default=True)],
@@ -14,10 +17,8 @@ _SINGLE_SPEAKER_REGISTRY: dict[str, list[VoiceInfo]] = {
     "fr": [VoiceInfo(voice_id="fr_mai", name="MAI French", language_code="fr", gender="female", is_default=True)],
 }
 
-# ── XTTS v2 built-in speakers ─────────────────────────────────────────────────
-# voice_id MUST match the string in model.speakers exactly.
-# All speakers are multilingual (work with every supported language).
-_XTTS_VOICES: list[VoiceInfo] = [
+# ── XTTS v2 built-in speakers (full fallback list) ────────────────────────────
+_XTTS_VOICES_FALLBACK: list[VoiceInfo] = [
     # Female
     VoiceInfo(voice_id="Claribel Dervla",    name="Claribel Dervla",    language_code="multilingual", gender="female", is_default=True),
     VoiceInfo(voice_id="Daisy Studious",     name="Daisy Studious",     language_code="multilingual", gender="female"),
@@ -78,7 +79,12 @@ _XTTS_VOICES: list[VoiceInfo] = [
 
 
 class VoiceService:
-    """Returns available TTS voices, grouped by language."""
+    """Returns available TTS voices, driven by config/voices.yaml when present."""
+
+    def __init__(self) -> None:
+        self._yaml_voices: list[VoiceInfo] | None = self._load_yaml_voices()
+
+    # ── Public API ─────────────────────────────────────────────────────────────
 
     def list_voices(self, language_code: str | None = None) -> list[VoiceInfo]:
         """Single-speaker backend: one voice per language."""
@@ -87,10 +93,11 @@ class VoiceService:
         return [v for voices in _SINGLE_SPEAKER_REGISTRY.values() for v in voices]
 
     def list_xtts_voices(self, gender: str | None = None) -> list[VoiceInfo]:
-        """XTTS v2 backend: all multilingual built-in speakers."""
+        """XTTS v2 backend: voices from config/voices.yaml (or built-in fallback)."""
+        voices = self._yaml_voices if self._yaml_voices is not None else _XTTS_VOICES_FALLBACK
         if gender:
-            return [v for v in _XTTS_VOICES if v.gender == gender.lower()]
-        return list(_XTTS_VOICES)
+            return [v for v in voices if v.gender == gender.lower()]
+        return list(voices)
 
     def get_default_voice(self, language_code: str) -> VoiceInfo | None:
         voices = _SINGLE_SPEAKER_REGISTRY.get(language_code, [])
@@ -98,3 +105,37 @@ class VoiceService:
 
     def supported_language_codes(self) -> list[str]:
         return list(_SINGLE_SPEAKER_REGISTRY.keys())
+
+    # ── Internals ──────────────────────────────────────────────────────────────
+
+    def _load_yaml_voices(self) -> list[VoiceInfo] | None:
+        if not _CONFIG_PATH.exists():
+            logger.debug("voices.yaml not found at %s — using built-in list", _CONFIG_PATH)
+            return None
+        try:
+            import yaml  # PyYAML — available as a transitive dep of coqui-tts
+            with _CONFIG_PATH.open(encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+            result: list[VoiceInfo] = []
+            default_set = False
+            for entry in data.get("voices", []):
+                if not entry.get("enabled", True):
+                    continue
+                is_default = bool(entry.get("default", False)) and not default_set
+                if is_default:
+                    default_set = True
+                result.append(VoiceInfo(
+                    voice_id=entry["id"],
+                    name=entry.get("name", entry["id"]),
+                    language_code="multilingual",
+                    gender=entry.get("gender"),
+                    is_default=is_default,
+                    description=entry.get("description"),
+                ))
+            if not default_set and result:
+                result[0] = result[0].model_copy(update={"is_default": True})
+            logger.info("Loaded %d voices from %s", len(result), _CONFIG_PATH)
+            return result or None
+        except Exception as exc:
+            logger.warning("Failed to load voices.yaml: %s — using built-in list", exc)
+            return None

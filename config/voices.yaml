@@ -1,0 +1,95 @@
+# Banking TTS — Voice Configuration
+#
+# This file controls which XTTS v2 built-in voices are shown in the UI.
+# Changes take effect on server restart.
+#
+# Fields:
+#   id      — must match the XTTS v2 built-in speaker name exactly (case-sensitive)
+#   name    — short display name shown in the UI
+#   gender  — female | male
+#   enabled — set to false to hide without deleting the entry
+#   default — set to true on ONE voice to pre-select it on page load
+
+voices:
+  # ── Female voices ──────────────────────────────────────────────────────────
+  - id: "Claribel Dervla"
+    name: "Claribel"
+    gender: female
+    enabled: true
+    default: true
+
+  - id: "Daisy Studious"
+    name: "Daisy"
+    gender: female
+    enabled: true
+
+  - id: "Gracie Wise"
+    name: "Gracie"
+    gender: female
+    enabled: true
+
+  - id: "Ana Florence"
+    name: "Ana"
+    gender: female
+    enabled: true
+
+  - id: "Nova Hogarth"
+    name: "Nova"
+    gender: female
+    enabled: true
+
+  - id: "Sofia Hellen"
+    name: "Sofia"
+    gender: female
+    enabled: true
+
+  - id: "Tammy Grit"
+    name: "Tammy"
+    gender: female
+    enabled: true
+
+  - id: "Brenda Stern"
+    name: "Brenda"
+    gender: female
+    enabled: true
+
+  # ── Male voices ────────────────────────────────────────────────────────────
+  - id: "Andrew Chipper"
+    name: "Andrew"
+    gender: male
+    enabled: true
+
+  - id: "Craig Gutsy"
+    name: "Craig"
+    gender: male
+    enabled: true
+
+  - id: "Badr Odhiambo"
+    name: "Badr"
+    gender: male
+    enabled: true
+
+  - id: "Damien Black"
+    name: "Damien"
+    gender: male
+    enabled: true
+
+  - id: "Viktor Eka"
+    name: "Viktor"
+    gender: male
+    enabled: true
+
+  - id: "Aaron Dreschner"
+    name: "Aaron"
+    gender: male
+    enabled: true
+
+  - id: "Kumar Dahl"
+    name: "Kumar"
+    gender: male
+    enabled: true
+
+  - id: "Filip Traverse"
+    name: "Filip"
+    gender: male
+    enabled: true

@@ -71,7 +71,8 @@ class CoquiXTTSBackend(ITTSBackend):
                     "or a model that exposes built-in speakers."
                 )
 
-        logger.debug("XTTS synthesizing %d chars in '%s' (speed=%.2f)", len(text), language, _prosody.speed)
+        kwargs["text"] = self._prepare_text(kwargs["text"])
+        logger.debug("XTTS synthesizing %d chars in '%s' (speed=%.2f)", len(kwargs["text"]), language, _prosody.speed)
         t0 = time.perf_counter()
 
         wav_array = model.tts(**kwargs)
@@ -82,6 +83,7 @@ class CoquiXTTSBackend(ITTSBackend):
         audio = self._apply_prosody(
             np.array(wav_array, dtype=np.float32), sample_rate, _prosody, apply_speed=False
         )
+        audio = self._trim_and_fade(audio, sample_rate)
         audio_duration = len(audio) / sample_rate
 
         wav_bytes = self._array_to_wav(audio, sample_rate)
@@ -117,6 +119,25 @@ class CoquiXTTSBackend(ITTSBackend):
         model = TTS(model_name=XTTS_MODEL_ID, gpu=self._settings.TTS_USE_GPU)
         logger.info("XTTS v2 loaded in %.1fs", time.perf_counter() - t0)
         return model
+
+    @staticmethod
+    def _prepare_text(text: str) -> str:
+        """
+        Guard against XTTS hallucinating extra words after the sentence ends.
+
+        XTTS v2 sometimes continues generating speech past the final period
+        (e.g. "five. at all").  A second stop marker — a space followed by
+        another period — gives the model a clear double boundary and reliably
+        suppresses this behaviour.
+        """
+        text = text.strip()
+        if not text:
+            return text
+        # Ensure there is already a hard stop at the end
+        if text[-1] not in ".!?。！？،":
+            text += "."
+        # Append the hallucination-suppressor
+        return text + " ."
 
     @staticmethod
     def _array_to_wav(audio: np.ndarray, sample_rate: int) -> bytes:

@@ -78,3 +78,38 @@ class ITTSBackend(ABC):
         x_old = np.linspace(0.0, 1.0, len(audio))
         x_new = np.linspace(0.0, 1.0, new_length)
         return np.interp(x_new, x_old, audio).astype(np.float32)
+
+    @staticmethod
+    def _trim_and_fade(
+        audio: np.ndarray,
+        sample_rate: int,
+        silence_threshold: float = 0.01,
+        tail_ms: int = 120,
+        fade_ms: int = 80,
+    ) -> np.ndarray:
+        """
+        Remove trailing noise/artifacts that XTTS v2 sometimes appends after
+        the last spoken word:
+
+          1. Find the last sample whose amplitude exceeds `silence_threshold`.
+          2. Keep `tail_ms` of audio after that point (natural breath/reverb).
+          3. Apply a linear fade-out over the final `fade_ms` to eliminate
+             any click or pop at the hard cut.
+        """
+        if len(audio) == 0:
+            return audio
+
+        above = np.where(np.abs(audio) > silence_threshold)[0]
+        if len(above) == 0:
+            return audio  # entirely silent — return as-is
+
+        last_voice = above[-1]
+        tail_samples = int(sample_rate * tail_ms / 1000)
+        end_idx = min(last_voice + tail_samples, len(audio))
+        audio = audio[:end_idx].copy()
+
+        fade_samples = min(int(sample_rate * fade_ms / 1000), len(audio))
+        if fade_samples > 0:
+            audio[-fade_samples:] *= np.linspace(1.0, 0.0, fade_samples, dtype=np.float32)
+
+        return audio
