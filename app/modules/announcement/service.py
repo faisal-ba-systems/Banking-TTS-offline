@@ -70,19 +70,26 @@ class AnnouncementService:
           - Digit  → word from digit_words  (e.g. '1' → 'one')
           - Letter → kept as the uppercase letter (TTS reads it phonetically)
 
-        Parts are joined with a single space so the TTS engine pronounces
-        each element individually.
+        A comma is appended to a letter when the next character is a digit so
+        the TTS engine inserts a brief pause between the prefix letter and the
+        digit sequence (e.g. 'B13' → 'B, one three').
 
         Examples (English):
-          'A13'  → 'A one three'
+          'B13'  → 'B, one three'
+          'A13'  → 'A, one three'
           '105'  → 'one zero five'
           '23'   → 'two three'
         """
         parts: list[str] = []
+        prev_was_letter = False
         for char in text.upper():
             if char.isdigit():
+                if prev_was_letter and parts:
+                    parts[-1] += ","
                 parts.append(digit_words[char])
+                prev_was_letter = False
             elif char.isalpha():
                 parts.append(char)
+                prev_was_letter = True
             # Non-alphanumeric characters (e.g. '-') are silently skipped.
         return " ".join(parts)
