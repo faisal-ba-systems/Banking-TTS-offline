@@ -1,296 +1,709 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Banking TTS — Announcement System</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #0f172a;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      color: #e2e8f0;
-    }
-
-    .card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 16px;
-      padding: 40px 44px;
-      width: 100%;
-      max-width: 480px;
-      box-shadow: 0 25px 60px rgba(0,0,0,.5);
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 28px;
-    }
-    .logo-icon {
-      width: 36px; height: 36px;
-      background: linear-gradient(135deg, #3b82f6, #6366f1);
-      border-radius: 8px;
-      display: grid; place-items: center;
-      font-size: 18px;
-    }
-    .logo-text { font-size: 18px; font-weight: 700; color: #f1f5f9; }
-    .logo-sub  { font-size: 11px; color: #64748b; letter-spacing: .5px; text-transform: uppercase; }
-
-    h1 { font-size: 22px; font-weight: 700; color: #f1f5f9; margin-bottom: 6px; }
-    .subtitle { font-size: 13px; color: #64748b; margin-bottom: 28px; }
-
-    label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: .5px;
-      margin-bottom: 6px;
-    }
-
-    input, select {
-      width: 100%;
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 15px;
-      color: #f1f5f9;
-      outline: none;
-      transition: border-color .2s;
-      margin-bottom: 18px;
-    }
-    input:focus, select:focus { border-color: #3b82f6; }
-    input::placeholder { color: #475569; }
-    select option { background: #1e293b; }
-
-    .row { display: flex; gap: 14px; }
-    .row > div { flex: 1; }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      background: linear-gradient(135deg, #3b82f6, #6366f1);
-      border: none;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: 600;
-      color: #fff;
-      cursor: pointer;
-      transition: opacity .2s, transform .1s;
-      margin-top: 4px;
-    }
-    button:hover:not(:disabled) { opacity: .9; }
-    button:active:not(:disabled) { transform: scale(.98); }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-
-    /* Status bar */
-    .status {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 22px;
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      min-height: 44px;
-      transition: background .3s;
-      visibility: hidden;
-    }
-    .status.show { visibility: visible; }
-    .status.loading { background: #1e3a5f; color: #93c5fd; }
-    .status.success { background: #14532d; color: #86efac; }
-    .status.error   { background: #450a0a; color: #fca5a5; }
-
-    .spinner {
-      width: 16px; height: 16px;
-      border: 2px solid currentColor;
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-      flex-shrink: 0;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Audio player */
-    .player-wrap {
-      margin-top: 18px;
-      display: none;
-    }
-    .player-wrap.show { display: block; }
-    .player-label {
-      font-size: 11px;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: .5px;
-      margin-bottom: 8px;
-    }
-    audio {
-      width: 100%;
-      border-radius: 8px;
-      accent-color: #3b82f6;
-    }
-
-    /* Announcement text preview */
-    .text-preview {
-      margin-top: 14px;
-      padding: 12px 14px;
-      background: #0f172a;
-      border: 1px solid #1e3a5f;
-      border-radius: 8px;
-      font-size: 13px;
-      color: #93c5fd;
-      line-height: 1.5;
-      display: none;
-    }
-    .text-preview.show { display: block; }
-    .text-preview strong { display: block; font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
-  </style>
-</head>
-<body>
-<div class="card">
-  <div class="logo">
-    <div class="logo-icon">🔊</div>
-    <div>
-      <div class="logo-text">Banking TTS</div>
-      <div class="logo-sub">Offline Announcement System</div>
-    </div>
-  </div>
-
-  <h1>Queue Announcement</h1>
-  <p class="subtitle">Enter a token and counter number to generate a spoken announcement.</p>
-
-  <div class="row">
-    <div>
-      <label for="token">Token Number</label>
-      <input id="token" type="text" placeholder="e.g. A13" maxlength="20" />
-    </div>
-    <div>
-      <label for="counter">Counter Number</label>
-      <input id="counter" type="text" placeholder="e.g. 23" maxlength="10" />
-    </div>
-  </div>
-
-  <label for="language">Language</label>
-  <select id="language">
-    <option value="en">🇬🇧  English</option>
-    <option value="es">🇪🇸  Spanish</option>
-    <option value="ar">🇸🇦  Arabic</option>
-    <option value="zh">🇨🇳  Chinese</option>
-    <option value="ja">🇯🇵  Japanese</option>
-    <option value="fr">🇫🇷  French</option>
-  </select>
-
-  <button id="btn" onclick="announce()">Generate Announcement</button>
-
-  <div class="status" id="status">
-    <span class="spinner" id="spinner" style="display:none"></span>
-    <span id="status-text"></span>
-  </div>
-
-  <div class="text-preview" id="preview">
-    <strong>Spoken text</strong>
-    <span id="preview-text"></span>
-  </div>
-
-  <div class="player-wrap" id="player-wrap">
-    <div class="player-label">Audio Output — plays automatically</div>
-    <audio id="audio-player" controls></audio>
-  </div>
-</div>
-
-<script>
-  async function announce() {
-    const token   = document.getElementById('token').value.trim();
-    const counter = document.getElementById('counter').value.trim();
-    const lang    = document.getElementById('language').value;
-
-    if (!token || !counter) {
-      setStatus('error', 'Please fill in both Token and Counter fields.');
-      return;
-    }
-
-    setStatus('loading', 'Synthesizing speech…');
-    setPlayer(false);
-    setPreview(false);
-    document.getElementById('btn').disabled = true;
-
-    try {
-      const res = await fetch('/api/v1/announcements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token_number:   token,
-          counter_number: counter,
-          language:       lang,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(err.detail || res.statusText);
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Banking TTS — Announcement System</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
       }
 
-      // Show spoken text from response header
-      const spokenText = res.headers.get('X-Announcement-Text');
-      const duration   = res.headers.get('X-Audio-Duration');
-      if (spokenText) setPreview(true, spokenText);
+      body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #0f172a;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        color: #e2e8f0;
+        padding: 24px;
+      }
 
-      // Convert response body → object URL → play
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const player = document.getElementById('audio-player');
+      .card {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 16px;
+        padding: 40px 44px;
+        width: 100%;
+        max-width: 520px;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+      }
 
-      // Revoke previous object URL to free memory
-      if (player.dataset.prevUrl) URL.revokeObjectURL(player.dataset.prevUrl);
-      player.dataset.prevUrl = url;
-      player.src = url;
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 28px;
+      }
+      .logo-icon {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        font-size: 18px;
+      }
+      .logo-text {
+        font-size: 18px;
+        font-weight: 700;
+        color: #f1f5f9;
+      }
+      .logo-sub {
+        font-size: 11px;
+        color: #64748b;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+      }
 
-      setPlayer(true);
-      setStatus('success', `Ready — ${duration ? parseFloat(duration).toFixed(1) + 's' : ''} audio generated.`);
+      h1 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #f1f5f9;
+        margin-bottom: 6px;
+      }
+      .subtitle {
+        font-size: 13px;
+        color: #64748b;
+        margin-bottom: 28px;
+      }
 
-      // Auto-play
-      try { await player.play(); } catch (_) { /* autoplay blocked by browser */ }
+      label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+      }
 
-    } catch (err) {
-      setStatus('error', err.message);
-    } finally {
-      document.getElementById('btn').disabled = false;
-    }
-  }
+      input[type="text"],
+      select {
+        width: 100%;
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 15px;
+        color: #f1f5f9;
+        outline: none;
+        transition: border-color 0.2s;
+        margin-bottom: 18px;
+      }
+      input[type="text"]:focus,
+      select:focus {
+        border-color: #3b82f6;
+      }
+      input[type="text"]::placeholder {
+        color: #475569;
+      }
+      select option {
+        background: #1e293b;
+      }
 
-  function setStatus(type, msg) {
-    const el      = document.getElementById('status');
-    const spinner = document.getElementById('spinner');
-    const text    = document.getElementById('status-text');
-    el.className  = `status show ${type}`;
-    spinner.style.display = type === 'loading' ? 'block' : 'none';
-    text.textContent = msg;
-  }
+      .row {
+        display: flex;
+        gap: 14px;
+      }
+      .row > div {
+        flex: 1;
+      }
 
-  function setPlayer(show) {
-    document.getElementById('player-wrap').className = show ? 'player-wrap show' : 'player-wrap';
-  }
+      /* ── Prosody panel ─────────────────────────────────────── */
+      .prosody-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        padding: 10px 14px;
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        margin-bottom: 0;
+        user-select: none;
+        transition: border-color 0.2s;
+      }
+      .prosody-toggle:hover {
+        border-color: #3b82f6;
+      }
+      .prosody-toggle-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .prosody-toggle-left span {
+        font-size: 15px;
+      }
+      .prosody-chevron {
+        font-size: 13px;
+        color: #475569;
+        transition: transform 0.25s;
+      }
+      .prosody-chevron.open {
+        transform: rotate(180deg);
+      }
+      .prosody-reset {
+        font-size: 11px;
+        color: #475569;
+        cursor: pointer;
+        padding: 2px 8px;
+        border: 1px solid #334155;
+        border-radius: 4px;
+        background: transparent;
+        width: auto;
+        margin: 0;
+        transition:
+          color 0.2s,
+          border-color 0.2s;
+      }
+      .prosody-reset:hover:not(:disabled) {
+        color: #94a3b8;
+        border-color: #475569;
+        opacity: 1;
+      }
 
-  function setPreview(show, text = '') {
-    const el = document.getElementById('preview');
-    el.className = show ? 'text-preview show' : 'text-preview';
-    document.getElementById('preview-text').textContent = text;
-  }
+      .prosody-panel {
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        padding: 16px 16px 4px;
+        margin-bottom: 18px;
+        display: none;
+      }
+      .prosody-panel.open {
+        display: block;
+      }
 
-  // Submit on Enter key
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Enter') announce();
-  });
-</script>
-</body>
+      /* Slider rows */
+      .slider-row {
+        display: grid;
+        grid-template-columns: 56px 1fr 52px;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .slider-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+      .slider-value {
+        font-size: 12px;
+        font-weight: 600;
+        color: #93c5fd;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 4px;
+        background: #334155;
+        border-radius: 2px;
+        outline: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        cursor: pointer;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        background: #3b82f6;
+        border-radius: 50%;
+        cursor: pointer;
+        transition:
+          background 0.2s,
+          transform 0.1s;
+      }
+      input[type="range"]::-webkit-slider-thumb:hover {
+        background: #60a5fa;
+        transform: scale(1.15);
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        background: #3b82f6;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+      }
+      input[type="range"]:focus {
+        border-color: transparent;
+      }
+
+      .prosody-divider {
+        border: none;
+        border-top: 1px solid #1e293b;
+        margin: 4px 0 14px;
+      }
+
+      /* Voice select inside panel */
+      .voice-row {
+        margin-bottom: 12px;
+      }
+      .voice-row label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 6px;
+      }
+      .voice-row select {
+        margin-bottom: 0;
+        font-size: 13px;
+        padding: 8px 12px;
+      }
+
+      /* ── Main button ───────────────────────────────────────── */
+      button#btn {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #fff;
+        cursor: pointer;
+        transition:
+          opacity 0.2s,
+          transform 0.1s;
+        margin-top: 4px;
+      }
+      button#btn:hover:not(:disabled) {
+        opacity: 0.9;
+      }
+      button#btn:active:not(:disabled) {
+        transform: scale(0.98);
+      }
+      button#btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* Status bar */
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 22px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        min-height: 44px;
+        transition: background 0.3s;
+        visibility: hidden;
+      }
+      .status.show {
+        visibility: visible;
+      }
+      .status.loading {
+        background: #1e3a5f;
+        color: #93c5fd;
+      }
+      .status.success {
+        background: #14532d;
+        color: #86efac;
+      }
+      .status.error {
+        background: #450a0a;
+        color: #fca5a5;
+      }
+
+      .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        flex-shrink: 0;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Audio player */
+      .player-wrap {
+        margin-top: 18px;
+        display: none;
+      }
+      .player-wrap.show {
+        display: block;
+      }
+      .player-label {
+        font-size: 11px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+      }
+      audio {
+        width: 100%;
+        border-radius: 8px;
+        accent-color: #3b82f6;
+      }
+
+      /* Announcement text preview */
+      .text-preview {
+        margin-top: 14px;
+        padding: 12px 14px;
+        background: #0f172a;
+        border: 1px solid #1e3a5f;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #93c5fd;
+        line-height: 1.5;
+        display: none;
+      }
+      .text-preview.show {
+        display: block;
+      }
+      .text-preview strong {
+        display: block;
+        font-size: 10px;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logo">
+        <div class="logo-icon">🔊</div>
+        <div>
+          <div class="logo-text">Banking TTS</div>
+          <div class="logo-sub">Offline Announcement System</div>
+        </div>
+      </div>
+
+      <h1>Queue Announcement</h1>
+      <p class="subtitle">
+        Enter a token and counter number to generate a spoken announcement.
+      </p>
+
+      <div class="row">
+        <div>
+          <label for="token">Token Number</label>
+          <input id="token" type="text" placeholder="e.g. B13" maxlength="20" />
+        </div>
+        <div>
+          <label for="counter">Counter Number</label>
+          <input
+            id="counter"
+            type="text"
+            placeholder="e.g. 23"
+            maxlength="10"
+          />
+        </div>
+      </div>
+
+      <label for="language">Language</label>
+      <select id="language" style="margin-bottom: 12px">
+        <option value="en">🇬🇧 English</option>
+        <option value="es">🇪🇸 Spanish</option>
+        <option value="ar">🇸🇦 Arabic</option>
+        <option value="zh">🇨🇳 Chinese</option>
+        <option value="ja">🇯🇵 Japanese</option>
+        <option value="fr">🇫🇷 French</option>
+      </select>
+
+      <!-- Prosody toggle header -->
+      <div class="prosody-toggle" onclick="toggleProsody()" id="prosody-toggle">
+        <div class="prosody-toggle-left">
+          <span>🎙</span> Voice &amp; Prosody Settings
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px">
+          <button
+            class="prosody-reset"
+            onclick="
+              event.stopPropagation();
+              resetProsody();
+            "
+          >
+            Reset
+          </button>
+          <span class="prosody-chevron" id="prosody-chevron">▼</span>
+        </div>
+      </div>
+
+      <!-- Prosody panel (open by default) -->
+      <div class="prosody-panel open" id="prosody-panel">
+        <!-- Speed -->
+        <div class="slider-row">
+          <span class="slider-label">Speed</span>
+          <input
+            type="range"
+            id="speed"
+            min="0.5"
+            max="2.0"
+            step="0.05"
+            value="1.0"
+            oninput="
+              updateSlider('speed', 'speed-val', (v) => v.toFixed(2) + '×')
+            "
+          />
+          <span class="slider-value" id="speed-val">1.00×</span>
+        </div>
+
+        <!-- Pitch -->
+        <div class="slider-row">
+          <span class="slider-label">Pitch</span>
+          <input
+            type="range"
+            id="pitch"
+            min="-12"
+            max="12"
+            step="0.5"
+            value="0"
+            oninput="
+              updateSlider(
+                'pitch',
+                'pitch-val',
+                (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + ' st',
+              )
+            "
+          />
+          <span class="slider-value" id="pitch-val">+0.0 st</span>
+        </div>
+
+        <!-- Volume -->
+        <div class="slider-row">
+          <span class="slider-label">Volume</span>
+          <input
+            type="range"
+            id="volume"
+            min="0.1"
+            max="3.0"
+            step="0.1"
+            value="1.0"
+            oninput="
+              updateSlider('volume', 'volume-val', (v) => v.toFixed(1) + '×')
+            "
+          />
+          <span class="slider-value" id="volume-val">1.0×</span>
+        </div>
+
+        <hr class="prosody-divider" />
+
+        <!-- Voice -->
+        <div class="voice-row">
+          <label for="voice-id">Voice (XTTS backend only)</label>
+          <select id="voice-id">
+            <option value="">— default voice —</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="btn" onclick="announce()">Generate Announcement</button>
+
+      <div class="status" id="status">
+        <span class="spinner" id="spinner" style="display: none"></span>
+        <span id="status-text"></span>
+      </div>
+
+      <div class="text-preview" id="preview">
+        <strong>Spoken text</strong>
+        <span id="preview-text"></span>
+      </div>
+
+      <div class="player-wrap" id="player-wrap">
+        <div class="player-label">Audio Output — plays automatically</div>
+        <audio id="audio-player" controls></audio>
+      </div>
+    </div>
+
+    <script>
+      // ── Prosody panel toggle ──────────────────────────────────────────────────
+      function toggleProsody() {
+        const panel = document.getElementById("prosody-panel");
+        const chevron = document.getElementById("prosody-chevron");
+        const open = panel.classList.toggle("open");
+        chevron.classList.toggle("open", open);
+      }
+
+      // Initialize chevron state (panel starts open)
+      document.getElementById("prosody-chevron").classList.add("open");
+
+      // ── Slider display updater ────────────────────────────────────────────────
+      function updateSlider(inputId, labelId, fmt) {
+        const v = parseFloat(document.getElementById(inputId).value);
+        document.getElementById(labelId).textContent = fmt(v);
+      }
+
+      // ── Reset prosody to defaults ─────────────────────────────────────────────
+      function resetProsody() {
+        document.getElementById("speed").value = 1.0;
+        document.getElementById("pitch").value = 0;
+        document.getElementById("volume").value = 1.0;
+        document.getElementById("voice-id").value = "";
+        document.getElementById("speed-val").textContent = "1.00×";
+        document.getElementById("pitch-val").textContent = "+0.0 st";
+        document.getElementById("volume-val").textContent = "1.0×";
+      }
+
+      // ── Load voices from API ──────────────────────────────────────────────────
+      async function loadVoices() {
+        try {
+          const res = await fetch("/api/v1/voices");
+          if (!res.ok) return;
+          const data = await res.json();
+          const sel = document.getElementById("voice-id");
+
+          // Group by gender for readability
+          const female = data.voices.filter((v) => v.gender === "female");
+          const male = data.voices.filter((v) => v.gender === "male");
+          const other = data.voices.filter((v) => !v.gender);
+
+          function addGroup(label, voices) {
+            if (!voices.length) return;
+            const grp = document.createElement("optgroup");
+            grp.label = label;
+            voices.forEach((v) => {
+              const opt = document.createElement("option");
+              opt.value = v.voice_id;
+              opt.textContent = v.name || v.voice_id;
+              if (v.is_default) opt.defaultSelected = true;
+              grp.appendChild(opt);
+            });
+            sel.appendChild(grp);
+          }
+
+          addGroup("Female", female);
+          addGroup("Male", male);
+          addGroup("Other", other);
+        } catch (_) {
+          // voices endpoint unavailable — select stays as-is
+        }
+      }
+
+      // ── Main announce function ────────────────────────────────────────────────
+      async function announce() {
+        const token = document.getElementById("token").value.trim();
+        const counter = document.getElementById("counter").value.trim();
+        const lang = document.getElementById("language").value;
+
+        if (!token || !counter) {
+          setStatus("error", "Please fill in both Token and Counter fields.");
+          return;
+        }
+
+        const speed = parseFloat(document.getElementById("speed").value);
+        const pitch = parseFloat(document.getElementById("pitch").value);
+        const volume = parseFloat(document.getElementById("volume").value);
+        const voiceId = document.getElementById("voice-id").value || null;
+
+        setStatus("loading", "Synthesizing speech…");
+        setPlayer(false);
+        setPreview(false);
+        document.getElementById("btn").disabled = true;
+
+        try {
+          const res = await fetch("/api/v1/announcements", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              token_number: token,
+              counter_number: counter,
+              language: lang,
+              prosody: {
+                speed,
+                pitch,
+                volume,
+                voice_id: voiceId,
+              },
+            }),
+          });
+
+          if (!res.ok) {
+            const err = await res
+              .json()
+              .catch(() => ({ detail: res.statusText }));
+            throw new Error(err.detail || res.statusText);
+          }
+
+          const spokenText = res.headers.get("X-Announcement-Text");
+          const duration = res.headers.get("X-Audio-Duration");
+          if (spokenText) setPreview(true, spokenText);
+
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const player = document.getElementById("audio-player");
+
+          if (player.dataset.prevUrl)
+            URL.revokeObjectURL(player.dataset.prevUrl);
+          player.dataset.prevUrl = url;
+          player.src = url;
+
+          setPlayer(true);
+          setStatus(
+            "success",
+            `Ready — ${duration ? parseFloat(duration).toFixed(1) + "s" : ""} audio generated.`,
+          );
+
+          try {
+            await player.play();
+          } catch (_) {
+            /* autoplay blocked */
+          }
+        } catch (err) {
+          setStatus("error", err.message);
+        } finally {
+          document.getElementById("btn").disabled = false;
+        }
+      }
+
+      // ── Helpers ───────────────────────────────────────────────────────────────
+      function setStatus(type, msg) {
+        const el = document.getElementById("status");
+        const spinner = document.getElementById("spinner");
+        const text = document.getElementById("status-text");
+        el.className = `status show ${type}`;
+        spinner.style.display = type === "loading" ? "block" : "none";
+        text.textContent = msg;
+      }
+
+      function setPlayer(show) {
+        document.getElementById("player-wrap").className = show
+          ? "player-wrap show"
+          : "player-wrap";
+      }
+
+      function setPreview(show, text = "") {
+        const el = document.getElementById("preview");
+        el.className = show ? "text-preview show" : "text-preview";
+        document.getElementById("preview-text").textContent = text;
+      }
+
+      // Submit on Enter key
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") announce();
+      });
+
+      // Load voices on startup
+      loadVoices();
+    </script>
+  </body>
 </html>

@@ -8,6 +8,7 @@ import soundfile as sf
 
 from app.config import Settings
 from app.modules.tts.backends.base import ITTSBackend, RawAudio
+from app.modules.tts.schemas import ProsodySettings
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,8 @@ _XTTS_LANG_MAP: dict[str, str] = {
     "fr": "fr",
 }
 
+_DEFAULT_PROSODY = ProsodySettings()
+
 
 class CoquiXTTSBackend(ITTSBackend):
     """
@@ -31,6 +34,9 @@ class CoquiXTTSBackend(ITTSBackend):
     Requires either:
       - A speaker WAV file (TTS_XTTS_SPEAKER_WAV env var) for voice cloning.
       - Or a built-in speaker name (first available speaker used by default).
+
+    Speed is passed natively to XTTS; pitch and volume are applied via
+    post-processing so they work regardless of XTTS version.
     """
 
     def __init__(self, settings: Settings) -> None:
@@ -40,36 +46,45 @@ class CoquiXTTSBackend(ITTSBackend):
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
-    def synthesize(self, text: str, language: str, voice_id: str | None = None) -> RawAudio:
+    def synthesize(self, text: str, language: str, prosody: ProsodySettings | None = None) -> RawAudio:
+        _prosody = prosody or _DEFAULT_PROSODY
         model = self._get_model()
         xtts_lang = _XTTS_LANG_MAP.get(language, language)
 
-        kwargs: dict = {"text": text, "language": xtts_lang}
+        kwargs: dict = {
+            "text": text,
+            "language": xtts_lang,
+            "speed": _prosody.speed,
+        }
 
         speaker_wav = self._settings.TTS_XTTS_SPEAKER_WAV
         if speaker_wav:
             kwargs["speaker_wav"] = speaker_wav
         else:
-            # Fall back to the first built-in speaker when no reference wav is configured.
             speakers: list[str] = getattr(model, "speakers", None) or []
             if speakers:
-                kwargs["speaker"] = voice_id if voice_id in speakers else speakers[0]
+                chosen = _prosody.voice_id if _prosody.voice_id in speakers else speakers[0]
+                kwargs["speaker"] = chosen
             else:
                 raise RuntimeError(
                     "XTTS v2 requires either TTS_XTTS_SPEAKER_WAV to be set "
                     "or a model that exposes built-in speakers."
                 )
 
-        logger.debug("XTTS synthesizing %d chars in '%s'", len(text), language)
+        logger.debug("XTTS synthesizing %d chars in '%s' (speed=%.2f)", len(text), language, _prosody.speed)
         t0 = time.perf_counter()
 
         wav_array = model.tts(**kwargs)
         sample_rate: int = model.synthesizer.output_sample_rate
         duration = time.perf_counter() - t0
 
-        wav_bytes = self._array_to_wav(np.array(wav_array, dtype=np.float32), sample_rate)
-        audio_duration = len(wav_array) / sample_rate
+        # Speed is already applied natively; only apply pitch and volume here.
+        audio = self._apply_prosody(
+            np.array(wav_array, dtype=np.float32), sample_rate, _prosody, apply_speed=False
+        )
+        audio_duration = len(audio) / sample_rate
 
+        wav_bytes = self._array_to_wav(audio, sample_rate)
         logger.info("XTTS synthesized %.2fs audio in %.2fs", audio_duration, duration)
         return RawAudio(
             wav_bytes=wav_bytes,

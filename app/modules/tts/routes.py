@@ -33,7 +33,7 @@ async def synthesize(
             detail=f"Language '{body.language}' is not supported. Supported: {lang_svc.supported_codes()}",
         )
     try:
-        result = await tts.synthesize(body.text, body.language, body.voice_id)
+        result = await tts.synthesize(body.text, body.language, body.prosody)
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 

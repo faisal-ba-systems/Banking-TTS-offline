@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from app.modules.language.schemas import LanguageConfig
 from app.modules.language.service import LanguageService
 from app.modules.tts.backends.base import RawAudio
+from app.modules.tts.schemas import ProsodySettings
 from app.modules.tts.service import TTSService
 
 logger = logging.getLogger(__name__)
@@ -34,12 +35,12 @@ class AnnouncementService:
         token_number: str,
         counter_number: str,
         language: str,
-        voice_id: str | None = None,
+        prosody: ProsodySettings | None = None,
     ) -> AnnouncementResult:
         lang_config = self._language_service.get(language)
         text = self._build_announcement_text(token_number, counter_number, lang_config)
         logger.info("Announcing [%s] token='%s' counter='%s' → '%s'", language, token_number, counter_number, text)
-        audio = await self._tts.synthesize(text, language, voice_id)
+        audio = await self._tts.synthesize(text, language, prosody)
         return AnnouncementResult(announcement_text=text, audio=audio)
 
     def build_preview_text(

@@ -6,6 +6,7 @@ from app.modules.language.service import LanguageService
 from app.modules.tts.backends.base import ITTSBackend, RawAudio
 from app.modules.tts.backends.coqui_single import CoquiSingleSpeakerBackend
 from app.modules.tts.backends.coqui_xtts import CoquiXTTSBackend
+from app.modules.tts.schemas import ProsodySettings
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,12 @@ class TTSService:
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
-    async def synthesize(self, text: str, language: str, voice_id: str | None = None) -> RawAudio:
+    async def synthesize(
+        self,
+        text: str,
+        language: str,
+        prosody: ProsodySettings | None = None,
+    ) -> RawAudio:
         if not self._language_service.is_supported(language):
             raise ValueError(f"Unsupported language: '{language}'")
 
@@ -40,7 +46,7 @@ class TTSService:
             self._backend.synthesize,
             text,
             language,
-            voice_id,
+            prosody,
         )
 
     def is_language_ready(self, language: str) -> bool:

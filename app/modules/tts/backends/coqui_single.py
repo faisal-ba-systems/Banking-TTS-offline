@@ -9,8 +9,11 @@ import soundfile as sf
 from app.config import Settings
 from app.modules.language.service import LanguageService
 from app.modules.tts.backends.base import ITTSBackend, RawAudio
+from app.modules.tts.schemas import ProsodySettings
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_PROSODY = ProsodySettings()
 
 
 class CoquiSingleSpeakerBackend(ITTSBackend):
@@ -20,6 +23,9 @@ class CoquiSingleSpeakerBackend(ITTSBackend):
     Models are loaded lazily on first use and kept in memory for the lifetime
     of the process.  A per-language lock prevents duplicate loading under
     concurrent first requests.
+
+    Prosody (speed, pitch, volume) is applied via post-processing so it works
+    uniformly across all single-speaker model architectures.
     """
 
     def __init__(self, settings: Settings, language_service: LanguageService) -> None:
@@ -30,7 +36,8 @@ class CoquiSingleSpeakerBackend(ITTSBackend):
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
-    def synthesize(self, text: str, language: str, voice_id: str | None = None) -> RawAudio:
+    def synthesize(self, text: str, language: str, prosody: ProsodySettings | None = None) -> RawAudio:
+        _prosody = prosody or _DEFAULT_PROSODY
         model = self._get_model(language)
         lang_config = self._language_service.get(language)
 
@@ -41,9 +48,10 @@ class CoquiSingleSpeakerBackend(ITTSBackend):
         sample_rate: int = model.synthesizer.output_sample_rate
         duration = time.perf_counter() - t0
 
-        wav_bytes = self._array_to_wav(np.array(wav_array, dtype=np.float32), sample_rate)
-        audio_duration = len(wav_array) / sample_rate
+        audio = self._apply_prosody(np.array(wav_array, dtype=np.float32), sample_rate, _prosody, apply_speed=True)
+        audio_duration = len(audio) / sample_rate
 
+        wav_bytes = self._array_to_wav(audio, sample_rate)
         logger.info("Synthesized %.2fs audio in %.2fs for language '%s'", audio_duration, duration, language)
         return RawAudio(
             wav_bytes=wav_bytes,
